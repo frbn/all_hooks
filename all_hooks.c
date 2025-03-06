@@ -266,13 +266,13 @@ void ah_fmgr_hook(FmgrHookEventType event, FmgrInfo * flinfo, Datum *arg){
 bool ah_needs_fmgr_hook (Oid fn_oid)
 {
 	elog(WARNING, "needs_fmgr_hook_type called");
-	return true;
 	if (ah_original_needs_fmgr_hook)
 	{
+	  elog(WARNING, "ah_original_needs_fmgr_hook called");
 		return ah_original_needs_fmgr_hook(fn_oid);
 	}else
 	{
-		return needs_fmgr_hook(fn_oid);
+		return true;
 	}
 }
  
