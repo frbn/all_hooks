@@ -124,7 +124,11 @@ static ExecutorCheckPerms_hook_type ah_original_ExecutorCheckPerms_hook = NULL;
 static ExecutorStart_hook_type ah_original_ExecutorStart_hook = NULL;
 
 // ExecutorStart_hook
+#if PG_VERSION_NUM < 180000
+void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags);
+#else
 bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags);
+#endif
 
 // ExecutorRun_hook
 static ExecutorRun_hook_type ah_original_ExecutorRun_hook = NULL;
@@ -217,7 +221,7 @@ static bool ah_ExecutorCheckPerms_hook (List* tableList, List* rteperminfos, boo
 
 // ExecutorStart_hook
 #if PG_VERSION_NUM < 180000
-void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags, bool run_once)
+void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
 #else
 bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
 #endif
@@ -233,7 +237,9 @@ bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
 	{
 		standard_ExecutorStart(queryDesc, eflags);
 	}
+#if PG_VERSION_NUM >= 180000
 	return ExecPlanStillValid(queryDesc->estate);
+#endif
 }
 
 // ExecutorRun_hook
@@ -250,14 +256,20 @@ void ah_ExecutorRun_hook(
     elog(WARNING, "ExecutorRun_hook called");
 
 	if (ah_original_ExecutorRun_hook){
-    	// ah_original_ExecutorRun_hook(queryDesc, direction, count, execute_once);
+#if PG_VERSION_NUM < 180000
+    	ah_original_ExecutorRun_hook(queryDesc, direction, count, execute_once);
+#else
     	ah_original_ExecutorRun_hook(queryDesc, direction, count);
+#endif
 
 	}
 	else
 	{
-    	// standard_ExecutorRun(queryDesc, direction, count, execute_once);
+#if PG_VERSION_NUM < 180000
+    	standard_ExecutorRun(queryDesc, direction, count, execute_once);
+#else
     	standard_ExecutorRun(queryDesc, direction, count);
+#endif
   	}
 }
 
