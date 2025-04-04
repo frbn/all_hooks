@@ -50,7 +50,7 @@
 #include "storage/ipc.h"
 
 // explain_hooks
-#if PG_VERSION_NUM > 180000
+#if PG_VERSION_NUM >= 180000
 #include "commands/explain.h"
 #include "commands/explain_format.h"
 #include "commands/explain_state.h"
@@ -110,9 +110,9 @@ static void ah_ClientAuthentication_hook(Port * port, int status);
 static shmem_startup_hook_type ah_original_shmem_startup_hook = NULL;
 void ah_shmem_startup_hook(void);
 
-// explain_tips
-#if PG_VERSION_NUM > 180000
-static explain_per_node_hook_type prev_explain_per_node_hook;
+// explain_hooks
+#if PG_VERSION_NUM >= 180000
+static explain_per_node_hook_type prev_explain_per_node_hook = NULL;
 #endif
 
 // Executor
@@ -124,7 +124,6 @@ static ExecutorCheckPerms_hook_type ah_original_ExecutorCheckPerms_hook = NULL;
 static ExecutorStart_hook_type ah_original_ExecutorStart_hook = NULL;
 
 // ExecutorStart_hook
-// void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags);
 bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags);
 
 // ExecutorRun_hook
@@ -138,7 +137,9 @@ void ah_ExecutorRun_hook
 	QueryDesc *queryDesc,
 	ScanDirection direction,
 	uint64 count
-  // ,bool execute_once
+#if PG_VERSION_NUM < 180000
+  ,bool execute_once
+#endif
 );
 
 // planner_hook
@@ -215,8 +216,11 @@ static bool ah_ExecutorCheckPerms_hook (List* tableList, List* rteperminfos, boo
 }
 
 // ExecutorStart_hook
-// void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
+#if PG_VERSION_NUM < 180000
+void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags, bool run_once)
+#else
 bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
+#endif
 {
 
 	elog(DEBUG1, "ExecutorStart_hook called");
@@ -237,7 +241,9 @@ void ah_ExecutorRun_hook(
 	QueryDesc *queryDesc,
 	ScanDirection direction,
 	uint64 count 
-	//, bool execute_once
+#if PG_VERSION_NUM < 180000
+  , bool execute_once
+#endif
 )
 {
 
@@ -412,6 +418,14 @@ void _PG_init(void)
   elog(WARNING,"hooking: shmem_startup_hook");
   ah_original_shmem_startup_hook = shmem_startup_hook;
   shmem_startup_hook = ah_shmem_startup_hook;
+
+  // explain_hook
+#if PG_VERSION_NUM >= 180000
+  if (prev_explain_per_node_hook == NULL)
+  {
+    elog(WARNING,"will hook: explain_per_node_hook");
+  }
+#endif
 
   // planner_hook
   elog(WARNING,"hooking: planner_hook");
