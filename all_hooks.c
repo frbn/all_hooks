@@ -104,7 +104,8 @@ static ExecutorCheckPerms_hook_type ah_original_ExecutorCheckPerms_hook = NULL;
 static ExecutorStart_hook_type ah_original_ExecutorStart_hook = NULL;
 
 // ExecutorStart_hook
-void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags);
+// void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags);
+bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags);
 
 // ExecutorRun_hook
 static ExecutorRun_hook_type ah_original_ExecutorRun_hook = NULL;
@@ -116,8 +117,8 @@ void ah_ExecutorRun_hook
 (
 	QueryDesc *queryDesc,
 	ScanDirection direction,
-	uint64 count,
-	bool execute_once
+	uint64 count
+  // ,bool execute_once
 );
 
 // planner_hook
@@ -194,7 +195,8 @@ static bool ah_ExecutorCheckPerms_hook (List* tableList, List* rteperminfos, boo
 }
 
 // ExecutorStart_hook
-void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
+// void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
+bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
 {
 
 	elog(DEBUG1, "ExecutorStart_hook called");
@@ -207,25 +209,29 @@ void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
 	{
 		standard_ExecutorStart(queryDesc, eflags);
 	}
+	return ExecPlanStillValid(queryDesc->estate);
 }
 
 // ExecutorRun_hook
 void ah_ExecutorRun_hook(
 	QueryDesc *queryDesc,
 	ScanDirection direction,
-	uint64 count, 
-	bool execute_once)
+	uint64 count 
+	//, bool execute_once
+)
 {
 
     elog(WARNING, "ExecutorRun_hook called");
 
 	if (ah_original_ExecutorRun_hook){
-    	ah_original_ExecutorRun_hook(queryDesc, direction, count, execute_once);
+    	// ah_original_ExecutorRun_hook(queryDesc, direction, count, execute_once);
+    	ah_original_ExecutorRun_hook(queryDesc, direction, count);
 
 	}
 	else
 	{
-    	standard_ExecutorRun(queryDesc, direction, count, execute_once);
+    	// standard_ExecutorRun(queryDesc, direction, count, execute_once);
+    	standard_ExecutorRun(queryDesc, direction, count);
   	}
 }
 
