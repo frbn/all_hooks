@@ -42,14 +42,21 @@
 // emit_log_hook
 #include "utils/elog.h"
 
-//check_password_hook
+// check_password_hook
 #include "commands/user.h"
 
-//shmem_startup
+// shmem_startup
 #include "storage/shmem.h"
 #include "storage/ipc.h"
 
+// explain_hooks
+#if PG_VERSION_NUM > 180000
+#include "commands/explain.h"
+#include "commands/explain_format.h"
+#include "commands/explain_state.h"
+#endif
 // ----------
+
 
 // ExecutorEnd_hook
 static ExecutorEnd_hook_type ah_original_ExecutorEnd_hook = NULL;
@@ -103,6 +110,10 @@ static void ah_ClientAuthentication_hook(Port * port, int status);
 static shmem_startup_hook_type ah_original_shmem_startup_hook = NULL;
 void ah_shmem_startup_hook(void);
 
+// explain_tips
+#if PG_VERSION_NUM > 180000
+static explain_per_node_hook_type prev_explain_per_node_hook;
+#endif
 
 // Executor
 
