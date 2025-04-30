@@ -112,7 +112,19 @@ void ah_shmem_startup_hook(void);
 
 // explain_hooks
 #if PG_VERSION_NUM >= 180000
-static explain_per_node_hook_type prev_explain_per_node_hook = NULL;
+static explain_per_node_hook_type ah_original_explain_per_node_hook = NULL;
+static explain_per_plan_hook_type ah_original_explain_per_plan_hook = NULL;
+static void ah_explain_per_node_hook(PlanState *planstate, List *ancestors,
+									  const char *relationship,
+									  const char *plan_name,
+									  ExplainState *es);
+static void ah_explain_per_plan_hook(PlannedStmt *plannedstmt,
+									  IntoClause *into,
+									  ExplainState *es,
+									  const char *queryString,
+									  ParamListInfo params,
+									  QueryEnvironment *queryEnv);
+
 #endif
 
 // Executor
@@ -403,6 +415,32 @@ void ah_shmem_startup_hook(void)
 
 }
 
+static void ah_explain_per_node_hook(PlanState *planstate, List *ancestors,
+									  const char *relationship,
+									  const char *plan_name,
+									  ExplainState *es)
+{
+    elog(WARNING,"explain_per_node_hook called");
+    if (ah_original_explain_per_node_hook)
+    {
+      ah_original_explain_per_node_hook(planstate, ancestors, relationship, plan_name, es);
+  }
+
+}
+static void ah_explain_per_plan_hook(PlannedStmt *plannedstmt,
+									  IntoClause *into,
+									  ExplainState *es,
+									  const char *queryString,
+									  ParamListInfo params,
+									  QueryEnvironment *queryEnv)
+{
+    if (ah_original_explain_per_plan_hook)
+        ah_original_explain_per_plan_hook(plannedstmt, into, es, queryString, params, queryEnv);
+    elog(WARNING,"explain_per_plan_hook called");
+
+}
+
+
 PG_MODULE_MAGIC;
 
 /* Function definitions */
@@ -430,14 +468,6 @@ void _PG_init(void)
   elog(WARNING,"hooking: shmem_startup_hook");
   ah_original_shmem_startup_hook = shmem_startup_hook;
   shmem_startup_hook = ah_shmem_startup_hook;
-
-  // explain_hook
-#if PG_VERSION_NUM >= 180000
-  if (prev_explain_per_node_hook == NULL)
-  {
-    elog(WARNING,"will hook: explain_per_node_hook");
-  }
-#endif
 
   // planner_hook
   elog(WARNING,"hooking: planner_hook");
@@ -499,7 +529,21 @@ void _PG_init(void)
   ah_original_emit_log_hook = emit_log_hook;
   emit_log_hook = ah_emit_log_hook;
 
-}
+  // explain_hook
+#if PG_VERSION_NUM >= 180000
+ // per_node_hook
+  elog(WARNING,"hooking: explain_per_node_hook");
+  ah_original_explain_per_node_hook = explain_per_node_hook;
+  explain_per_node_hook = ah_explain_per_node_hook;
+
+  // per_plan_hook
+  elog(WARNING,"hooking: explain_per_plan_hook");
+  ah_original_explain_per_plan_hook = explain_per_plan_hook;
+  explain_per_plan_hook = ah_explain_per_plan_hook;
+#endif
+
+
+ }
 
 // Called with extension unload.
 void _PG_fini(void)
@@ -511,17 +555,19 @@ void _PG_fini(void)
 	*plugin_ptr = ah_original_plpgsql_plugin;
 	ah_original_plpgsql_plugin = NULL;
 
-    ClientAuthentication_hook = ah_original_client_authentication_hook;
-    ExecutorEnd_hook = ah_original_ExecutorEnd_hook;
-    planner_hook = ah_original_planner_hook;
-    ProcessUtility_hook = ah_original_ProcessUtility_hook;
-    ExecutorStart_hook = ah_original_ExecutorStart_hook;
-    ExecutorRun_hook = ah_original_ExecutorRun_hook;
-    ExecutorEnd_hook = ah_original_ExecutorEnd_hook;
-    ExecutorFinish_hook = ah_original_ExecutorFinish_hook;
-    ExecutorCheckPerms_hook = ah_original_ExecutorCheckPerms_hook;
-    emit_log_hook = ah_original_emit_log_hook;
-    fmgr_hook = ah_original_fmgr_hook;
-    check_password_hook = ah_original_check_password_hook;
-    shmem_startup_hook = ah_original_shmem_startup_hook;
+  ClientAuthentication_hook = ah_original_client_authentication_hook;
+  ExecutorEnd_hook = ah_original_ExecutorEnd_hook;
+  planner_hook = ah_original_planner_hook;
+  ProcessUtility_hook = ah_original_ProcessUtility_hook;
+  ExecutorStart_hook = ah_original_ExecutorStart_hook;
+  ExecutorRun_hook = ah_original_ExecutorRun_hook;
+  ExecutorEnd_hook = ah_original_ExecutorEnd_hook;
+  ExecutorFinish_hook = ah_original_ExecutorFinish_hook;
+  ExecutorCheckPerms_hook = ah_original_ExecutorCheckPerms_hook;
+  emit_log_hook = ah_original_emit_log_hook;
+  fmgr_hook = ah_original_fmgr_hook;
+  check_password_hook = ah_original_check_password_hook;
+  shmem_startup_hook = ah_original_shmem_startup_hook;
+  explain_per_plan_hook = ah_original_explain_per_plan_hook;
+  explain_per_node_hook = ah_original_explain_per_node_hook;
 }
