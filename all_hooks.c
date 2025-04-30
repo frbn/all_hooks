@@ -415,6 +415,8 @@ void ah_shmem_startup_hook(void)
 
 }
 
+
+#if PG_VERSION_NUM >= 180000
 static void ah_explain_per_node_hook(PlanState *planstate, List *ancestors,
 									  const char *relationship,
 									  const char *plan_name,
@@ -439,7 +441,7 @@ static void ah_explain_per_plan_hook(PlannedStmt *plannedstmt,
     elog(WARNING,"explain_per_plan_hook called");
 
 }
-
+#endif
 
 PG_MODULE_MAGIC;
 
@@ -568,6 +570,8 @@ void _PG_fini(void)
   fmgr_hook = ah_original_fmgr_hook;
   check_password_hook = ah_original_check_password_hook;
   shmem_startup_hook = ah_original_shmem_startup_hook;
+#if PG_VERSION_NUM >= 180000
   explain_per_plan_hook = ah_original_explain_per_plan_hook;
   explain_per_node_hook = ah_original_explain_per_node_hook;
+#endif
 }
