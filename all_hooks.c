@@ -365,7 +365,7 @@ void ah_emit_log_hook(ErrorData * eData)
 	if (! ah_emit_log_hook_in_hook)
 	{
 		ah_emit_log_hook_in_hook = true;
-		elog(WARNING, "ah_emit_log_hook called");
+		elog(WARNING, "emit_log_hook called");
 	}
 
 	if (ah_original_emit_log_hook)
