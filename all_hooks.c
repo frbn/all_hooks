@@ -1,3 +1,12 @@
+/*-------------------------------------------------------------------------
+ *
+ * all_hooks
+ *	  
+ *
+ * Copyright (c) 2025, Franck Boudehen, Dalibo
+ *
+ *-------------------------------------------------------------------------
+ */
 #include "postgres.h"
 #include "libpq/auth.h"
 // fmgr_hook
@@ -33,14 +42,21 @@
 // emit_log_hook
 #include "utils/elog.h"
 
-//check_password_hook
+// check_password_hook
 #include "commands/user.h"
 
-//shmem_startup
+// shmem_startup
 #include "storage/shmem.h"
 #include "storage/ipc.h"
 
+// explain_hooks
+#if PG_VERSION_NUM >= 180000
+#include "commands/explain.h"
+#include "commands/explain_format.h"
+#include "commands/explain_state.h"
+#endif
 // ----------
+
 
 // ExecutorEnd_hook
 static ExecutorEnd_hook_type ah_original_ExecutorEnd_hook = NULL;
@@ -94,6 +110,22 @@ static void ah_ClientAuthentication_hook(Port * port, int status);
 static shmem_startup_hook_type ah_original_shmem_startup_hook = NULL;
 void ah_shmem_startup_hook(void);
 
+// explain_hooks
+#if PG_VERSION_NUM >= 180000
+static explain_per_node_hook_type ah_original_explain_per_node_hook = NULL;
+static explain_per_plan_hook_type ah_original_explain_per_plan_hook = NULL;
+static void ah_explain_per_node_hook(PlanState *planstate, List *ancestors,
+									  const char *relationship,
+									  const char *plan_name,
+									  ExplainState *es);
+static void ah_explain_per_plan_hook(PlannedStmt *plannedstmt,
+									  IntoClause *into,
+									  ExplainState *es,
+									  const char *queryString,
+									  ParamListInfo params,
+									  QueryEnvironment *queryEnv);
+
+#endif
 
 // Executor
 
@@ -104,7 +136,11 @@ static ExecutorCheckPerms_hook_type ah_original_ExecutorCheckPerms_hook = NULL;
 static ExecutorStart_hook_type ah_original_ExecutorStart_hook = NULL;
 
 // ExecutorStart_hook
+#if PG_VERSION_NUM < 180000
 void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags);
+#else
+bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags);
+#endif
 
 // ExecutorRun_hook
 static ExecutorRun_hook_type ah_original_ExecutorRun_hook = NULL;
@@ -116,8 +152,10 @@ void ah_ExecutorRun_hook
 (
 	QueryDesc *queryDesc,
 	ScanDirection direction,
-	uint64 count,
-	bool execute_once
+	uint64 count
+#if PG_VERSION_NUM < 180000
+  ,bool execute_once
+#endif
 );
 
 // planner_hook
@@ -194,7 +232,11 @@ static bool ah_ExecutorCheckPerms_hook (List* tableList, List* rteperminfos, boo
 }
 
 // ExecutorStart_hook
+#if PG_VERSION_NUM < 180000
 void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
+#else
+bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
+#endif
 {
 
 	elog(DEBUG1, "ExecutorStart_hook called");
@@ -207,25 +249,39 @@ void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
 	{
 		standard_ExecutorStart(queryDesc, eflags);
 	}
+#if PG_VERSION_NUM >= 180000
+	return ExecPlanStillValid(queryDesc->estate);
+#endif
 }
 
 // ExecutorRun_hook
 void ah_ExecutorRun_hook(
 	QueryDesc *queryDesc,
 	ScanDirection direction,
-	uint64 count, 
-	bool execute_once)
+	uint64 count 
+#if PG_VERSION_NUM < 180000
+  , bool execute_once
+#endif
+)
 {
 
     elog(WARNING, "ExecutorRun_hook called");
 
 	if (ah_original_ExecutorRun_hook){
+#if PG_VERSION_NUM < 180000
     	ah_original_ExecutorRun_hook(queryDesc, direction, count, execute_once);
+#else
+    	ah_original_ExecutorRun_hook(queryDesc, direction, count);
+#endif
 
 	}
 	else
 	{
+#if PG_VERSION_NUM < 180000
     	standard_ExecutorRun(queryDesc, direction, count, execute_once);
+#else
+    	standard_ExecutorRun(queryDesc, direction, count);
+#endif
   	}
 }
 
@@ -309,7 +365,7 @@ void ah_emit_log_hook(ErrorData * eData)
 	if (! ah_emit_log_hook_in_hook)
 	{
 		ah_emit_log_hook_in_hook = true;
-		elog(WARNING, "ah_emit_log_hook called");
+		elog(WARNING, "emit_log_hook called");
 	}
 
 	if (ah_original_emit_log_hook)
@@ -358,6 +414,34 @@ void ah_shmem_startup_hook(void)
 	elog(WARNING,"shmem_startup_hook called");
 
 }
+
+
+#if PG_VERSION_NUM >= 180000
+static void ah_explain_per_node_hook(PlanState *planstate, List *ancestors,
+									  const char *relationship,
+									  const char *plan_name,
+									  ExplainState *es)
+{
+    elog(WARNING,"explain_per_node_hook called");
+    if (ah_original_explain_per_node_hook)
+    {
+      ah_original_explain_per_node_hook(planstate, ancestors, relationship, plan_name, es);
+  }
+
+}
+static void ah_explain_per_plan_hook(PlannedStmt *plannedstmt,
+									  IntoClause *into,
+									  ExplainState *es,
+									  const char *queryString,
+									  ParamListInfo params,
+									  QueryEnvironment *queryEnv)
+{
+    if (ah_original_explain_per_plan_hook)
+        ah_original_explain_per_plan_hook(plannedstmt, into, es, queryString, params, queryEnv);
+    elog(WARNING,"explain_per_plan_hook called");
+
+}
+#endif
 
 PG_MODULE_MAGIC;
 
@@ -447,7 +531,21 @@ void _PG_init(void)
   ah_original_emit_log_hook = emit_log_hook;
   emit_log_hook = ah_emit_log_hook;
 
-}
+  // explain_hook
+#if PG_VERSION_NUM >= 180000
+ // per_node_hook
+  elog(WARNING,"hooking: explain_per_node_hook");
+  ah_original_explain_per_node_hook = explain_per_node_hook;
+  explain_per_node_hook = ah_explain_per_node_hook;
+
+  // per_plan_hook
+  elog(WARNING,"hooking: explain_per_plan_hook");
+  ah_original_explain_per_plan_hook = explain_per_plan_hook;
+  explain_per_plan_hook = ah_explain_per_plan_hook;
+#endif
+
+
+ }
 
 // Called with extension unload.
 void _PG_fini(void)
@@ -459,17 +557,21 @@ void _PG_fini(void)
 	*plugin_ptr = ah_original_plpgsql_plugin;
 	ah_original_plpgsql_plugin = NULL;
 
-    ClientAuthentication_hook = ah_original_client_authentication_hook;
-    ExecutorEnd_hook = ah_original_ExecutorEnd_hook;
-    planner_hook = ah_original_planner_hook;
-    ProcessUtility_hook = ah_original_ProcessUtility_hook;
-    ExecutorStart_hook = ah_original_ExecutorStart_hook;
-    ExecutorRun_hook = ah_original_ExecutorRun_hook;
-    ExecutorEnd_hook = ah_original_ExecutorEnd_hook;
-    ExecutorFinish_hook = ah_original_ExecutorFinish_hook;
-    ExecutorCheckPerms_hook = ah_original_ExecutorCheckPerms_hook;
-    emit_log_hook = ah_original_emit_log_hook;
-    fmgr_hook = ah_original_fmgr_hook;
-    check_password_hook = ah_original_check_password_hook;
-    shmem_startup_hook = ah_original_shmem_startup_hook;
+  ClientAuthentication_hook = ah_original_client_authentication_hook;
+  ExecutorEnd_hook = ah_original_ExecutorEnd_hook;
+  planner_hook = ah_original_planner_hook;
+  ProcessUtility_hook = ah_original_ProcessUtility_hook;
+  ExecutorStart_hook = ah_original_ExecutorStart_hook;
+  ExecutorRun_hook = ah_original_ExecutorRun_hook;
+  ExecutorEnd_hook = ah_original_ExecutorEnd_hook;
+  ExecutorFinish_hook = ah_original_ExecutorFinish_hook;
+  ExecutorCheckPerms_hook = ah_original_ExecutorCheckPerms_hook;
+  emit_log_hook = ah_original_emit_log_hook;
+  fmgr_hook = ah_original_fmgr_hook;
+  check_password_hook = ah_original_check_password_hook;
+  shmem_startup_hook = ah_original_shmem_startup_hook;
+#if PG_VERSION_NUM >= 180000
+  explain_per_plan_hook = ah_original_explain_per_plan_hook;
+  explain_per_node_hook = ah_original_explain_per_node_hook;
+#endif
 }
