@@ -339,26 +339,65 @@ bool ah_needs_fmgr_hook (Oid fn_oid)
 static void ah_plpgsql_stmt_beg_hook(PLpgSQL_execstate * estate, PLpgSQL_stmt* stmt)
 {
 	elog(WARNING,"stmt_beg hook called");
+	if (ah_original_plpgsql_plugin)
+	{
+		if (ah_original_plpgsql_plugin->stmt_beg)
+		{
+			ah_original_plpgsql_plugin->stmt_beg(estate, stmt);
+		}
+
+	}
 }
 
 static void ah_plpgsql_stmt_end_hook(PLpgSQL_execstate * estate, PLpgSQL_stmt* stmt)
 {
 	elog(WARNING,"stmt_end hook called");
+	if (ah_original_plpgsql_plugin)
+	{
+		if (ah_original_plpgsql_plugin->stmt_end)
+		{
+			ah_original_plpgsql_plugin->stmt_end(estate, stmt);
+		}
+
+	}
 }
 
 static void ah_plpgsql_func_init_hook(PLpgSQL_execstate *estate, PLpgSQL_function *func)
 {
 	elog(WARNING,"func_init hook called");
+	if (ah_original_plpgsql_plugin)
+	{
+		if (ah_original_plpgsql_plugin->func_setup)
+		{
+			ah_original_plpgsql_plugin->func_setup(estate, func);
+		}
+	}
 }
 
 static void ah_plpgsql_func_beg_hook(PLpgSQL_execstate *estate, PLpgSQL_function *func)
 {
 	elog(WARNING,"func_beg hook called");
+	if (ah_original_plpgsql_plugin)
+	{
+		if (ah_original_plpgsql_plugin->func_beg)
+		{
+			ah_original_plpgsql_plugin->func_beg(estate, func);
+		}
+
+	}
 }
 
 static void ah_plpgsql_func_end_hook(PLpgSQL_execstate *estate, PLpgSQL_function *func)
 {
 	elog(WARNING,"func_end hook called");
+	if (ah_original_plpgsql_plugin)
+	{
+		if (ah_original_plpgsql_plugin->func_end)
+		{
+			ah_original_plpgsql_plugin->func_end(estate, func);
+		}
+
+	}
 
 }
 
@@ -366,6 +405,7 @@ static void ah_plpgsql_func_end_hook(PLpgSQL_execstate *estate, PLpgSQL_function
 void ah_emit_log_hook(ErrorData * eData)
 {
 
+	// we avoid log looping
 	if (! ah_emit_log_hook_in_hook)
 	{
 		ah_emit_log_hook_in_hook = true;
@@ -451,11 +491,10 @@ QueryEnvironment *queryEnv)
 
 PG_MODULE_MAGIC;
 
-/* Function definitions */
-
 void _PG_init(void);
 void _PG_fini(void);
 
+/* Function definitions */
 
 
 // Called upon extension load.
