@@ -74,7 +74,7 @@ bool ah_needs_fmgr_hook (Oid fn_oid);
 // PLPGSQL
 static PLpgSQL_plugin  *ah_original_plpgsql_plugin = NULL;
 
-static void ah_plpgsql_func_init_hook(PLpgSQL_execstate *estate, PLpgSQL_function *func);
+static void ah_plpgsql_func_setup_hook(PLpgSQL_execstate *estate, PLpgSQL_function *func);
 static void ah_plpgsql_func_beg_hook(PLpgSQL_execstate *estate, PLpgSQL_function *func);
 static void ah_plpgsql_func_end_hook(PLpgSQL_execstate *estate, PLpgSQL_function *func);
 
@@ -84,7 +84,7 @@ static void ah_plpgsql_stmt_end_hook(PLpgSQL_execstate * estate, PLpgSQL_stmt* s
 // PLPGSQL
 static PLpgSQL_plugin	ah_plugin_funcs =
 {
-	ah_plpgsql_func_init_hook,
+	ah_plpgsql_func_setup_hook,
 	ah_plpgsql_func_beg_hook,
 	ah_plpgsql_func_end_hook,
 	ah_plpgsql_stmt_beg_hook,
@@ -362,9 +362,9 @@ static void ah_plpgsql_stmt_end_hook(PLpgSQL_execstate * estate, PLpgSQL_stmt* s
 	}
 }
 
-static void ah_plpgsql_func_init_hook(PLpgSQL_execstate *estate, PLpgSQL_function *func)
+static void ah_plpgsql_func_setup_hook(PLpgSQL_execstate *estate, PLpgSQL_function *func)
 {
-	elog(WARNING,"func_init hook called");
+	elog(WARNING,"func_setup hook called");
 	if (ah_original_plpgsql_plugin)
 	{
 		if (ah_original_plpgsql_plugin->func_setup)
