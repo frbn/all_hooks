@@ -54,7 +54,12 @@
 #include "commands/explain.h"
 #include "commands/explain_format.h"
 #include "commands/explain_state.h"
+
+// set_rel_pathlist_hook
+#include "paths.h"
+
 #endif
+
 // ----------
 
 
@@ -131,11 +136,7 @@ static ExecutorCheckPerms_hook_type ah_original_ExecutorCheckPerms_hook;
 static ExecutorStart_hook_type ah_original_ExecutorStart_hook = NULL;
 
 // ExecutorStart_hook
-#if PG_VERSION_NUM < 180000
 void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags);
-#else
-bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags);
-#endif
 
 // ExecutorRun_hook
 static ExecutorRun_hook_type ah_original_ExecutorRun_hook = NULL;
@@ -234,11 +235,7 @@ bool ah_ExecutorCheckPerms_hook (List* tableList, List* rteperminfos, bool abort
 }
 
 // ExecutorStart_hook
-#if PG_VERSION_NUM < 180000
 void ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
-#else
-bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
-#endif
 {
 
 	elog(DEBUG1, "ExecutorStart_hook called");
@@ -251,9 +248,6 @@ bool ah_ExecutorStart_hook (QueryDesc *queryDesc, int eflags)
 	{
 		standard_ExecutorStart(queryDesc, eflags);
 	}
-#if PG_VERSION_NUM >= 180000
-	return ExecPlanStillValid(queryDesc->estate);
-#endif
 }
 
 // ExecutorRun_hook
