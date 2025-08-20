@@ -483,7 +483,12 @@ QueryEnvironment *queryEnv)
 }
 #endif
 
+#ifdef PG_MODULE_MAGIC_EXT
+PG_MODULE_MAGIC_EXT(.name = "all_hooks", .version = "0.1.0");
+#else
 PG_MODULE_MAGIC;
+#endif
+
 
 void _PG_init(void);
 void _PG_fini(void);
