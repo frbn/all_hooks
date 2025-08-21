@@ -492,13 +492,23 @@ QueryEnvironment *queryEnv)
 #endif
 
 #if PG_VERSION_NUM >= 180000
+	/*
+	 * Allow to editorialize on the set of Paths for this base
+	 * relation.  It could add new paths (such as CustomPaths) by calling
+	 * add_path(), or add_partial_path() if parallel aware.  It could also
+	 * delete or modify paths added by the core code.
+	 */
+
 static void ah_set_rel_pathlist_hook(PlannerInfo *root, RelOptInfo *rel,
 		Index rti, RangeTblEntry *rte){
 
 	elog(WARNING,"set_rel_pathlist_hook called");
+
+	// preserve hooks chaining
 	if (ah_original_set_rel_pathlist_hook){
 		ah_original_set_rel_pathlist_hook(root,rel,rti,rte);
 	}
+
 }
 #endif
 
