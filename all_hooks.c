@@ -501,8 +501,48 @@ QueryEnvironment *queryEnv)
 
 static void ah_set_rel_pathlist_hook(PlannerInfo *root, RelOptInfo *rel,
 		Index rti, RangeTblEntry *rte){
+	char rtekind_str[16];
 
-	elog(WARNING,"set_rel_pathlist_hook called");
+	switch (rte->rtekind)
+	{
+		case RTE_RELATION : strcpy(rtekind_str,"RELATION");
+		break;
+		case RTE_SUBQUERY : strcpy(rtekind_str,"SUBQUERY");
+		break;
+		case RTE_JOIN : strcpy(rtekind_str,"JOIN");
+		break;
+		case RTE_FUNCTION : strcpy(rtekind_str,"FUNCTION");
+		break;
+		case RTE_TABLEFUNC : strcpy(rtekind_str,"TABLEFUNC");
+		break;
+		case RTE_VALUES : strcpy(rtekind_str,"VALUES");
+		break;
+		case RTE_CTE : strcpy(rtekind_str,"CTE");
+		break;
+		case RTE_NAMEDTUPLESTORE : strcpy(rtekind_str,"NAMEDTUPLESTORE");
+		break;
+		case RTE_RESULT : strcpy(rtekind_str,"RESULT");
+		break;
+		case RTE_GROUP : strcpy(rtekind_str,"GROUP");
+		break;
+
+		default : strcpy(rtekind_str,"unknown");
+	}
+
+	// RTE_RELATION,				/* ordinary relation reference */
+	// RTE_SUBQUERY,				/* subquery in FROM */
+	// RTE_JOIN,					/* join */
+	// RTE_FUNCTION,				/* function in FROM */
+	// RTE_TABLEFUNC,				/* TableFunc(.., column list) */
+	// RTE_VALUES,					/* VALUES (<exprlist>), (<exprlist>), ... */
+	// RTE_CTE,					/* common table expr (WITH list element) */
+	// RTE_NAMEDTUPLESTORE,		/* tuplestore, e.g. for AFTER triggers */
+	// RTE_RESULT,					/* RTE represents an empty FROM clause; such
+	// 							 * RTEs are added by the planner, they're not
+	// 							 * present during parsing or rewriting */
+	// RTE_GROUP,					/* the grouping step */
+
+		elog(WARNING,"set_rel_pathlist_hook called: %s",rtekind_str);
 
 	// preserve hooks chaining
 	if (ah_original_set_rel_pathlist_hook){
