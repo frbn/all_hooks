@@ -56,7 +56,7 @@
 #include "commands/explain_state.h"
 
 // set_rel_pathlist_hook
-#include "paths.h"
+#include "optimizer/paths.h"
 
 #endif
 
@@ -174,6 +174,14 @@ void ah_ProcessUtility_hook(
 bool ah_ExecutorCheckPerms_hook (List* tableList, bool abort);
 #else
 bool ah_ExecutorCheckPerms_hook (List* tableList, List* rteperminfos, bool abort);
+#endif
+
+//paths_list
+#if PG_VERSION_NUM >=180000
+set_rel_pathlist_hook_type ah_original_set_rel_pathlist_hook;
+static void ah_set_rel_pathlist_hook(PlannerInfo *root, RelOptInfo *rel,
+		Index rti, RangeTblEntry *rte);
+
 #endif
 
 // ----------------------------------------
@@ -483,6 +491,17 @@ QueryEnvironment *queryEnv)
 }
 #endif
 
+#if PG_VERSION_NUM >= 180000
+static void ah_set_rel_pathlist_hook(PlannerInfo *root, RelOptInfo *rel,
+		Index rti, RangeTblEntry *rte){
+
+	elog(WARNING,"set_rel_pathlist_hook called");
+	if (ah_original_set_rel_pathlist_hook){
+		ah_original_set_rel_pathlist_hook(root,rel,rti,rte);
+	}
+}
+#endif
+
 #ifdef PG_MODULE_MAGIC_EXT
 PG_MODULE_MAGIC_EXT(.name = "all_hooks", .version = "0.1.0");
 #else
@@ -586,6 +605,12 @@ void _PG_init(void)
 	elog(WARNING,"hooking: explain_per_plan_hook");
 	ah_original_explain_per_plan_hook = explain_per_plan_hook;
 	explain_per_plan_hook = ah_explain_per_plan_hook;
+
+	// set_rel_pathlist_hook
+	elog(WARNING,"hooking: set_rel_pathlist_hook");
+	ah_original_set_rel_pathlist_hook = set_rel_pathlist_hook;
+	set_rel_pathlist_hook = ah_set_rel_pathlist_hook;
+
 #endif
 
 
