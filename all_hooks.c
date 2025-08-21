@@ -642,5 +642,6 @@ void _PG_fini(void)
 #if PG_VERSION_NUM >= 180000
 	explain_per_plan_hook = ah_original_explain_per_plan_hook;
 	explain_per_node_hook = ah_original_explain_per_node_hook;
+	set_rel_pathlist_hook = ah_original_set_rel_pathlist_hook;
 #endif
 }
