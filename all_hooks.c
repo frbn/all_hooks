@@ -60,6 +60,8 @@
 
 #endif
 
+// ObjectAccess
+#include "catalog/objectaccess.h"
 // ----------
 
 
@@ -183,6 +185,12 @@ static void ah_set_rel_pathlist_hook(PlannerInfo *root, RelOptInfo *rel,
 		Index rti, RangeTblEntry *rte);
 
 #endif
+
+// ObjectAccess
+object_access_hook_type ah_original_object_access_hook ;
+static void ah_object_access_hook(ObjectAccessType access,Oid classId, Oid objectId,int subId,void *arg);
+
+// object_access_hook_type_str ah_original_object_access_hook_str ;
 
 // ----------------------------------------
 // ----------------------------------------
@@ -529,19 +537,6 @@ static void ah_set_rel_pathlist_hook(PlannerInfo *root, RelOptInfo *rel,
 		default : strcpy(rtekind_str,"unknown");
 	}
 
-	// RTE_RELATION,				/* ordinary relation reference */
-	// RTE_SUBQUERY,				/* subquery in FROM */
-	// RTE_JOIN,					/* join */
-	// RTE_FUNCTION,				/* function in FROM */
-	// RTE_TABLEFUNC,				/* TableFunc(.., column list) */
-	// RTE_VALUES,					/* VALUES (<exprlist>), (<exprlist>), ... */
-	// RTE_CTE,					/* common table expr (WITH list element) */
-	// RTE_NAMEDTUPLESTORE,		/* tuplestore, e.g. for AFTER triggers */
-	// RTE_RESULT,					/* RTE represents an empty FROM clause; such
-	// 							 * RTEs are added by the planner, they're not
-	// 							 * present during parsing or rewriting */
-	// RTE_GROUP,					/* the grouping step */
-
 		elog(WARNING,"set_rel_pathlist_hook called: %s",rtekind_str);
 
 	// preserve hooks chaining
@@ -551,6 +546,18 @@ static void ah_set_rel_pathlist_hook(PlannerInfo *root, RelOptInfo *rel,
 
 }
 #endif
+
+// objectaccess
+
+static void ah_object_access_hook(ObjectAccessType access,Oid classId, Oid objectId,int subId,void *arg)
+{
+	elog(WARNING, "object_access_hook called");
+	if (ah_original_object_access_hook)
+	{
+		ah_original_object_access_hook(access,classId,objectId,subId,arg);
+	}
+
+}
 
 #ifdef PG_MODULE_MAGIC_EXT
 PG_MODULE_MAGIC_EXT(.name = "all_hooks", .version = "0.1.0");
@@ -662,6 +669,11 @@ void _PG_init(void)
 	set_rel_pathlist_hook = ah_set_rel_pathlist_hook;
 
 #endif
+
+	// object_access_hook
+	elog(WARNING,"hooking: object_access_hook");
+	ah_original_object_access_hook = object_access_hook;
+	object_access_hook = ah_object_access_hook;
 
 
 }
