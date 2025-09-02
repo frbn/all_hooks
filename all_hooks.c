@@ -190,7 +190,8 @@ static void ah_set_rel_pathlist_hook(PlannerInfo *root, RelOptInfo *rel,
 object_access_hook_type ah_original_object_access_hook ;
 static void ah_object_access_hook(ObjectAccessType access,Oid classId, Oid objectId,int subId,void *arg);
 
-// object_access_hook_type_str ah_original_object_access_hook_str ;
+object_access_hook_type_str ah_original_object_access_hook_str ;
+static void ah_object_access_hook_str(ObjectAccessType access, Oid classId,const char *objectStr,int subId,void *arg);
 
 // ----------------------------------------
 // ----------------------------------------
@@ -556,6 +557,17 @@ static void ah_object_access_hook(ObjectAccessType access,Oid classId, Oid objec
 	{
 		ah_original_object_access_hook(access,classId,objectId,subId,arg);
 	}
+}
+
+// objectaccessStr
+
+static void ah_object_access_hook_str(ObjectAccessType access, Oid classId,const char *objectStr,int subId,void *arg)
+{
+	elog(WARNING, "object_access_hook_str called");
+	if (ah_original_object_access_hook_str)
+	{
+		ah_original_object_access_hook_str(access, classId,objectStr,subId,arg);
+	}
 
 }
 
@@ -674,6 +686,11 @@ void _PG_init(void)
 	elog(WARNING,"hooking: object_access_hook");
 	ah_original_object_access_hook = object_access_hook;
 	object_access_hook = ah_object_access_hook;
+
+	// object_access_hook_str
+	elog(WARNING,"hooking: object_access_hook_str");
+	ah_original_object_access_hook_str = object_access_hook_str;
+	object_access_hook_str = ah_object_access_hook_str;
 
 
 }
