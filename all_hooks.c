@@ -62,6 +62,10 @@
 
 // ObjectAccess
 #include "catalog/objectaccess.h"
+
+// explain_get_index_name
+#include "commands/explain.h"
+#include "utils/lsyscache.h"
 // ----------
 
 
@@ -192,6 +196,10 @@ static void ah_object_access_hook(ObjectAccessType access,Oid classId, Oid objec
 
 object_access_hook_type_str ah_original_object_access_hook_str ;
 static void ah_object_access_hook_str(ObjectAccessType access, Oid classId,const char *objectStr,int subId,void *arg);
+
+// explain_get_index_name_hook
+explain_get_index_name_hook_type ah_original_explain_get_index_name_hook;
+static const char * ah_explain_get_index_name_hook(Oid indexId);
 
 // ----------------------------------------
 // ----------------------------------------
@@ -552,7 +560,25 @@ static void ah_set_rel_pathlist_hook(PlannerInfo *root, RelOptInfo *rel,
 
 static void ah_object_access_hook(ObjectAccessType access,Oid classId, Oid objectId,int subId,void *arg)
 {
-	elog(WARNING, "object_access_hook called");
+	char * accessName;
+	switch (access) {
+		case OAT_POST_CREATE : 	accessName= "OAT_POST_CREATE ";
+		break;
+		case OAT_DROP :accessName= "OAT_DROP ";
+		break;
+		case OAT_POST_ALTER :accessName= "OAT_POST_ALTER ";
+		break;
+		case OAT_NAMESPACE_SEARCH :accessName= "OAT_NAMESPACE_SEARCH ";
+		break;
+		case OAT_FUNCTION_EXECUTE :accessName= "OAT_FUNCTION_EXECUTE ";
+		break;
+		case OAT_TRUNCATE :accessName= "OAT_TRUNCATE ";
+		break;
+		default : accessName= "unknown";
+
+	}
+	elog(WARNING, "object_access_hook called: class %u / object %u / %s", classId,objectId, accessName);
+
 	if (ah_original_object_access_hook)
 	{
 		ah_original_object_access_hook(access,classId,objectId,subId,arg);
@@ -568,6 +594,33 @@ static void ah_object_access_hook_str(ObjectAccessType access, Oid classId,const
 	{
 		ah_original_object_access_hook_str(access, classId,objectStr,subId,arg);
 	}
+
+}
+
+// explain_get_index_name
+
+static const char * ah_explain_get_index_name_hook(Oid indexId)
+{
+	const char *result;
+
+	if (ah_original_explain_get_index_name_hook)
+	{
+		result = ah_original_explain_get_index_name_hook(indexId);
+	}
+	else {
+		result = NULL;
+	}
+	if (result == NULL)
+	{
+		result = get_rel_name(indexId);
+		if (result == NULL)
+		{
+			elog(ERROR, "cache lookup failed for index %u", indexId);
+		}
+	}
+
+	elog(WARNING, "explain_get_index_name_hook called: %s",result);
+	return result;
 
 }
 
@@ -692,6 +745,10 @@ void _PG_init(void)
 	ah_original_object_access_hook_str = object_access_hook_str;
 	object_access_hook_str = ah_object_access_hook_str;
 
+	// explain_get_index_name_hook
+	elog(WARNING,"hooking: explain_get_index_name_hook");
+	ah_original_explain_get_index_name_hook = explain_get_index_name_hook;
+	explain_get_index_name_hook = ah_explain_get_index_name_hook;
 
 }
 
