@@ -650,6 +650,11 @@ static void ah_explain_validate_options_hook (struct ExplainState *es,
 }
 #endif
 
+
+// --------------------------------------
+// --------------------------------------
+// --------------------------------------
+
 #ifdef PG_MODULE_MAGIC_EXT
 PG_MODULE_MAGIC_EXT(.name = "all_hooks", .version = "0.1.0");
 #else
