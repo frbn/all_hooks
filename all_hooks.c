@@ -66,6 +66,12 @@
 // explain_get_index_name
 #include "commands/explain.h"
 #include "utils/lsyscache.h"
+
+// explain_validate_options
+#if PG_VERSION_NUM >= 180000
+#include "commands/explain_state.h"
+#endif
+
 // ----------
 
 
@@ -200,6 +206,14 @@ static void ah_object_access_hook_str(ObjectAccessType access, Oid classId,const
 // explain_get_index_name_hook
 explain_get_index_name_hook_type ah_original_explain_get_index_name_hook;
 static const char * ah_explain_get_index_name_hook(Oid indexId);
+
+#if PG_VERSION_NUM >= 180000
+// explain_validate_options_hook
+explain_validate_options_hook_type ah_original_explain_validate_option_hook;
+static void ah_explain_validate_options_hook (struct ExplainState *es,
+											  	List *options,
+												ParseState *pstate);
+#endif
 
 // ----------------------------------------
 // ----------------------------------------
@@ -482,9 +496,9 @@ void ah_shmem_startup_hook(void)
 
 #if PG_VERSION_NUM >= 180000
 static void ah_explain_per_node_hook(PlanState *planstate, List *ancestors,
-									 const char *relationship,
-									 const char *plan_name,
-ExplainState *es)
+									const char *relationship,
+									const char *plan_name,
+									ExplainState *es)
 {
 	elog(WARNING,"explain_per_node_hook called");
 	if (ah_original_explain_per_node_hook)
@@ -624,6 +638,18 @@ static const char * ah_explain_get_index_name_hook(Oid indexId)
 
 }
 
+#if PG_VERSION_NUM >= 180000
+// explain_validate_options_hook
+
+static void ah_explain_validate_options_hook (struct ExplainState *es,
+										   	List *options,
+											ParseState *pstate)
+{
+	elog(WARNING, "explain_validate_options_hook called");
+
+}
+#endif
+
 #ifdef PG_MODULE_MAGIC_EXT
 PG_MODULE_MAGIC_EXT(.name = "all_hooks", .version = "0.1.0");
 #else
@@ -750,6 +776,12 @@ void _PG_init(void)
 	ah_original_explain_get_index_name_hook = explain_get_index_name_hook;
 	explain_get_index_name_hook = ah_explain_get_index_name_hook;
 
+#if PG_VERSION_NUM >= 180000
+	// explain_validate_options_hook
+	elog(WARNING,"hooking: 	explain_validate_options_hook");
+	ah_original_explain_validate_option_hook = explain_validate_options_hook;
+	explain_validate_options_hook = ah_explain_validate_option_hook;
+#endif
 }
 
 // Called with extension unload.
@@ -779,5 +811,7 @@ void _PG_fini(void)
 	explain_per_plan_hook = ah_original_explain_per_plan_hook;
 	explain_per_node_hook = ah_original_explain_per_node_hook;
 	set_rel_pathlist_hook = ah_original_set_rel_pathlist_hook;
+	explain_get_index_name_hook = ah_original_explain_get_index_name_hook;
+	explain_validate_options_hook = ah_original_explain_validate_option_hook;
 #endif
 }
