@@ -671,9 +671,13 @@ void _PG_fini(void);
 // Called upon extension load.
 void _PG_init(void)
 {
+	// Will be called one aty the extension load
+	// and for each parallel worker
+
 	PLpgSQL_plugin **plugin_ptr;
 
 	elog(WARNING, "all_hooks init");
+
 
 	elog(WARNING,"hooking: plpgsql");
 	/* Link us into the PL/pgSQL executor. */
