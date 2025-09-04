@@ -742,10 +742,6 @@ void _PG_init(void)
 	ah_original_client_authentication_hook = ClientAuthentication_hook;
 	ClientAuthentication_hook = ah_ClientAuthentication_hook;
 
-	// emit_log_hook
-	elog(WARNING,"hooking: emit_log_hook");
-	ah_original_emit_log_hook = emit_log_hook;
-	emit_log_hook = ah_emit_log_hook;
 
 	// explain_hook
 #if PG_VERSION_NUM >= 180000
@@ -783,10 +779,15 @@ void _PG_init(void)
 
 #if PG_VERSION_NUM >= 180000
 	// explain_validate_options_hook
-	elog(WARNING,"hooking: 	explain_validate_options_hook");
+	elog(WARNING,"hooking: explain_validate_options_hook");
 	ah_original_explain_validate_option_hook = explain_validate_options_hook;
-	explain_validate_options_hook = ah_explain_validate_option_hook;
+	explain_validate_options_hook = ah_explain_validate_options_hook;
 #endif
+
+	// emit_log_hook
+	elog(WARNING,"hooking: emit_log_hook");
+	ah_original_emit_log_hook = emit_log_hook;
+	emit_log_hook = ah_emit_log_hook;
 }
 
 // Called with extension unload.
